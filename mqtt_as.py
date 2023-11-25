@@ -802,6 +802,8 @@ class MQTT_base:
                 for cbi in self.cbis_msg:
                     if cbi[2]:
                         coro = cbi[0](topic, msg, retained, udata=cbi[2])
+                    else:
+                        coro = cbi[0](topic, msg, retained)
                     if cbi[1]:
                         asyncio.create_task(coro)
                     else:
