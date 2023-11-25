@@ -37,6 +37,7 @@ config["user"] = config["client_id"]
 client = None
 pkt_last_id_snd = 0
 pkt_last_id_rcv = 0
+t0_ms = 0
 
 
 max_buf_size = -1 # -1=autodetect
@@ -48,14 +49,11 @@ async def on_message():
     # receive self sent message from broker, check validity and sequence.
     print("-- message loop started")
     last_pl_size = 0; i = 0
-    t0 = 0
     global pkt_last_id_rcv
     async for topic, msg, retained in client.queue:
         pkt_last_id_rcv = int.from_bytes(msg[:4], "little")
-        if len(msg) == 0:
-            t0 = time.ticks_ms()
-        elif len(msg) == pkt_last_id_snd:
-            print("total time (RTT): ", time.ticks_ms() - t0)
+        if len(msg) == pkt_last_id_snd:
+            print("total time (RTT): ", time.ticks_ms() - t0_ms)
         else:
             try:
                 assert len(msg), pkt_last_id_rcv
@@ -71,12 +69,10 @@ async def on_message():
 
 # for cb test
 async def cb_on_message(tpc, msg, retained, udata=None):
-    global pkt_last_id_rcv
+    global pkt_last_id_rcv, t0_ms
     pkt_last_id_rcv = int.from_bytes(msg[:4], "little")
-    if len(msg) == 0:
-        udata["t0"] = time.ticks_ms()
-    elif len(msg) == pkt_last_id_snd:
-        print("total time (RTT): ", time.ticks_ms() - udata["t0"])
+    if len(msg) == pkt_last_id_snd:
+        print("total time (RTT): ", time.ticks_ms() - t0_ms)
     else:
         try:
             assert len(msg), pkt_last_id_rcv
@@ -116,7 +112,7 @@ async def main():
     global client, pkt_incr_sz, pkt_last_id_snd, t0_ms
     client = MQTT_base(config)
     asyncio.create_task(on_message())
-    #udata = {"last_pl_size": 0, "i": 0, "t0": 0}
+    #udata = {"last_pl_size": 0, "i": 0}
     #client.set_cb_on_event("msg", cb_on_message, udata=udata)
     
     #client.DEBUG = True
@@ -150,7 +146,7 @@ async def main():
             step = pkt_incr_sz
             for i in range(0, len(buf), step):
                 if i == 0:
-                    t0 = time.ticks_ms()
+                    t0_ms = time.ticks_ms()
                 if i - step > 0:
                     for j in range(i-step,i):
                         bufwr[j] = i%255
@@ -164,7 +160,7 @@ async def main():
                     print("Error in stress test:", ex.args, type(ex))
                     break
             print("sent", pkt_last_id_snd/pkt_incr_sz , "pubs at", pkt_incr_sz, "bytes increament")
-            print("total time (pub): ", time.ticks_ms() - t0)
+            print("total time (pub): ", time.ticks_ms() - t0_ms)
             break
         print("max payload size sent (byte): ", pkt_last_id_snd)
         while pkt_last_id_rcv < pkt_last_id_snd:
