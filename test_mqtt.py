@@ -5,7 +5,7 @@ from mqtt_as import MQTT_base, config
 import random, struct
 
 try:
-    import wifi
+    import wifi # from https://github.com/glenn20/micropython-espnow-utils
     wifi.reset()
     print("waiting for wifi")
     wifi.connect("ssid","pass")
@@ -119,7 +119,7 @@ async def main():
     #udata = {"last_pl_size": 0, "i": 0}
     #client.set_cb_on_event("msg", cb_on_message, udata=udata)
     
-    #client.DEBUG = True
+    client.DEBUG = False
     await client.connect(True)
     await client.up.wait()
     client.up.clear()
