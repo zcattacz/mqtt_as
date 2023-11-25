@@ -52,7 +52,9 @@ async def on_message():
     global pkt_last_id_rcv
     async for topic, msg, retained in client.queue:
         pkt_last_id_rcv = int.from_bytes(msg[:4], "little")
-        if len(msg) == pkt_last_id_snd:
+        if len(msg) == 0:
+            print("first echoed pub rcvd after(ms)", time.ticks_ms() -t0_ms)
+        elif len(msg) == pkt_last_id_snd:
             print("total time (RTT): ", time.ticks_ms() - t0_ms)
         else:
             try:
@@ -71,7 +73,9 @@ async def on_message():
 async def cb_on_message(tpc, msg, retained, udata=None):
     global pkt_last_id_rcv, t0_ms
     pkt_last_id_rcv = int.from_bytes(msg[:4], "little")
-    if len(msg) == pkt_last_id_snd:
+    if len(msg) == 0:
+        print("first echo rcvd after(ms)", time.ticks_ms() -t0_ms)
+    elif len(msg) == pkt_last_id_snd != 0:
         print("total time (RTT): ", time.ticks_ms() - t0_ms)
     else:
         try:
@@ -154,11 +158,12 @@ async def main():
                 struct.pack_into("I", bufwr, 0, i) # first byte = pl size
                 try:
                     await client.publish("stress_test/cln", bufwr[:i], oneshot=use_oneshot)
-                    pkt_last_id_snd = i
+                    _ = i
                 except Exception as ex:
                     gc.collect()
                     print("Error in stress test:", ex.args, type(ex))
                     break
+            pkt_last_id_snd = _
             print("sent", pkt_last_id_snd/pkt_incr_sz , "pubs at", pkt_incr_sz, "bytes increament")
             print("total time (pub): ", time.ticks_ms() - t0_ms)
             break
