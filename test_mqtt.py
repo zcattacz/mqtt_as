@@ -38,7 +38,10 @@ client = None
 pkt_last_id_snd = 0
 pkt_last_id_rcv = 0
 
-pkt_incr_sz = 1024*100
+
+max_buf_size = -1 # -1=autodetect
+pkt_incr_sz = 1024
+
 use_oneshot = True
 
 async def on_message():
@@ -87,12 +90,34 @@ async def cb_on_message(tpc, msg, retained, udata=None):
     udata["i"] += 1
     print("echo #", udata["i"], "\r", end="")
 
+async def _test_alloc(max_size, decr_size):
+    for i in range(max_size, 1024, -decr_size):
+        try:
+            buf = bytearray(b'\0'*i)
+            return i
+        except Exception as ex:
+            if "memory" in ex.args[0]:
+                gc.collect()
+                #print(gc.mem_free(), end="")
+                await asyncio.sleep_ms(100)
+                continue
+
+async def get_max_alloc_buf_sz(max_buf_size):
+    print("-- testing for max allocatable buffer")
+    for decr_size in [500, 100, 50, 10]: #kb
+        decr_size *= 1024
+        #print(max_buf_size, decr_size)
+        max_buf_size = await _test_alloc(max_buf_size, decr_size)
+    gc.collect()
+    print("max allocatable buffer size (byte): ", max_buf_size)
+    return max_buf_size
+
 async def main():
-    global client
+    global client, pkt_incr_sz, pkt_last_id_snd, t0_ms
     client = MQTT_base(config)
-    #asyncio.create_task(on_message())
-    udata = {"last_pl_size": 0, "i": 0, "t0": 0}
-    client.set_cb_on_event("msg", cb_on_message, udata=udata)
+    asyncio.create_task(on_message())
+    #udata = {"last_pl_size": 0, "i": 0, "t0": 0}
+    #client.set_cb_on_event("msg", cb_on_message, udata=udata)
     
     #client.DEBUG = True
     await client.connect(True)
@@ -103,26 +128,23 @@ async def main():
     await client.subscribe(topic, qos=0)
 
     try:
-        print("available men (byte):", gc.mem_free())
-        print("-- testing for max allocatable buffer")
-        max_pkt_size = 0
-        max_buf_size = 0
-        buf = None
-        for i in range(1024*1024*2, 1024, -1024):
-            try:
-                buf = bytearray(b'\0'*i)
-                max_buf_size = i
-                break
-            except Exception as ex:
-                if "memory" in ex.args[0]:
-                    gc.collect()
-                    #print(gc.mem_free(), end="")
-                    await asyncio.sleep_ms(100)
-                    continue
+        if max_buf_size == -1:
+            # try the biggest possible payload size (lib hard limit 2Mb)
+            print("available men (byte):", gc.mem_free())
+            #max_mem_prob_sz = 1024*1024*2
+            max_mem_prob_sz = min(1024*1024*2, gc.mem_free())
+            buf_size = await get_max_alloc_buf_sz(max_mem_prob_sz)
+        else:
+            buf_size = max_buf_size
+        
+        # avoid too many pkt
+        if pkt_incr_sz < buf_size/50:
+            pkt_incr_sz = int(buf_size/50)
+            print("pub increment size raised to:", pkt_incr_sz)
+
         gc.collect()
-        print("max allocatable buffer size (byte): ", max_buf_size)
-        t0 = 0
-        print("-- sending pubs ")
+        buf = bytearray(b'\0'*buf_size)
+        print(f"-- sending pubs, payload ranging from {0} to {buf_size} bytes in size")
         while client._has_connected:
             bufwr = memoryview(buf)
             step = pkt_incr_sz
@@ -136,18 +158,15 @@ async def main():
                 struct.pack_into("I", bufwr, 0, i) # first byte = pl size
                 try:
                     await client.publish("stress_test/cln", bufwr[:i], oneshot=use_oneshot)
+                    pkt_last_id_snd = i
                 except Exception as ex:
                     gc.collect()
                     print("Error in stress test:", ex.args, type(ex))
-                    max_pkt_size = i
                     break
-            global pkt_last_id_snd
-            pkt_last_id_snd = i
-            print("sent", i/pkt_incr_sz , "pubs at", pkt_incr_sz, "bytes increament")
+            print("sent", pkt_last_id_snd/pkt_incr_sz , "pubs at", pkt_incr_sz, "bytes increament")
             print("total time (pub): ", time.ticks_ms() - t0)
-            max_pkt_size = i
             break
-        print("max payload size sent (byte): ", max_pkt_size)
+        print("max payload size sent (byte): ", pkt_last_id_snd)
         while pkt_last_id_rcv < pkt_last_id_snd:
             await asyncio.sleep(1)
     except KeyboardInterrupt:
