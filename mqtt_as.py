@@ -13,6 +13,7 @@ try:
     import uasyncio as asyncio
     import time
     from time import ticks_ms, ticks_diff
+    print("running in micropython")
 except:
     import micropython # for @micropython.native stub
     socket = micropython.patch_socket()
@@ -20,6 +21,7 @@ except:
     time = micropython.patch_time()
     ticks_ms = time.ticks_ms
     ticks_diff = time.ticks_diff
+    print("running in cpython")
 gc.collect()
 
 import struct
@@ -30,6 +32,7 @@ try:
     from machine import unique_id
 except:
     # micropython unix port also lacks unique_id
+    print(" - unix port")
     def unique_id():
         import random
         return f'some.uid.{random.choice("abcdefg")}s{random.randint(0,9999)}'.encode("ascii")
@@ -380,7 +383,8 @@ class MQTT_base:
                     raise ex
         if self._sock.fileno() < 0:
             raise OSError('Socket Connect Failed, RST?')
-        print("c2", self._sock.fileno())
+        if self.DEBUG:
+            print("sock#", self._sock.fileno())
 
         # Socket connected
 
