@@ -69,10 +69,6 @@ everything else is either removed or dimmed as internal:
     finally:
         asyncio.new_event_loop()
 
-
-## Versions
-mqtt_sr.py is a Stream based version (shares a bit more code between micropython and cpython), worked fine for continuous sending and minor message reception (e.g. a few short rpc cmd). The lock between read/write has been removed, the send throughput improved greatly. It crashes in test when sending+receving both are under load. There is some fundimental issue to solve.
-
 ## On CPython
 - CPython lacks time.ticks_ms() etc. micropython.py is a shim.
 - MQTT_base initializes async lock/queue/event on instance creation. 
