@@ -39,9 +39,10 @@ pkt_last_id_snd = 0
 pkt_last_id_rcv = 0
 t0_ms = 0
 
-
+# test parameters
 max_buf_size = -1 # -1=autodetect
 pkt_incr_sz = 1024
+qos = 0
 
 use_oneshot = True
 
@@ -125,7 +126,7 @@ async def main():
     client.up.clear()
     
     topic = "stress_test/cln"
-    await client.subscribe(topic, qos=0)
+    await client.subscribe(topic, qos=qos)
 
     try:
         if max_buf_size == -1:
@@ -157,7 +158,7 @@ async def main():
                 
                 struct.pack_into("I", bufwr, 0, i) # first byte = pl size
                 try:
-                    await client.publish("stress_test/cln", bufwr[:i], oneshot=use_oneshot)
+                    await client.publish("stress_test/cln", bufwr[:i], qos=qos, oneshot=use_oneshot)
                     _ = i
                 except Exception as ex:
                     gc.collect()
