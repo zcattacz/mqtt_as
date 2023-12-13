@@ -1,26 +1,28 @@
-# mqtt_as.compat
-A stripped-down version of the asynchronous [micropython-mqtt/mqtt_as](https://github.com/peterhinch/micropython-mqtt) lib tested on both micropython ESP32, ESP32-S2, unix port and CPython3. Mostly adapted for 
-1. Seperate connectivity management
+# mqtt_as
+This micropython MQTT client is a fork of the asynchronous [micropython-mqtt/mqtt_as.py](https://github.com/peterhinch/micropython-mqtt) lib. A stripped-down version tested on both micropython ESP32, ESP32-S2, unix port and CPython3. Mostly adapted for 
+1. Drop wifi and connectivity management
 2. Runnability on both cpython and micropython
 
-This version reports down on network read,write error and stops working. User needs to recover link and try `connect()`, then wait for `up`/`down` event or check internal flag `_has_connected`==True.
+## Difference
+This version reports down on network read,write error and stops working. 
+User needs to recover link and try `connect()`, then wait for `up`/`down` event or check internal flag `_has_connected`==True.
 
 The following public interfaces are the same as original `mqtt_as`, 
 everything else is either removed or dimmed as internal:
 
 ## Methods
 `connect(clean:bool)` / `disconnect()` -> awaitable
-- `disconnect()` is unnecessary before *re-* connect, socket is closed on connect.
+- `disconnect()` is unnecessary before *re-* connect, socket is closed on `connect`.
 
 `subscribe(topic:str, qos)` / `unsubscribe(topic:str)` -> awaitable
 
 `publish(topic:str, msg:bytes, retain=False, qos=0, oneshot=False)` -> awaitable
 - msg must be bytes/bytearray, otherwise error on cpython
-- oneshot: construct full pkt in buffer, prone to OOM under constraint RAM, mainly used in cpython.
+- oneshot: construct full pkt in buffer, prone to OOM under constraint RAM, mainly used in cpython for performance.
 
 `broker_up()` / `_has_connected`
-- broker_up() blocks for a few seconds, for ping response
-- The internal flag is for immediate check on most recent status
+- `broker_up()` blocks for a few seconds, to actively wait for ping response
+- Use `_has_connected` for immediate check on most recent status
 
 ## Events
 `up` / `down` / `queue`
@@ -33,8 +35,7 @@ everything else is either removed or dimmed as internal:
 - Create loops for above events (`msg` for message queue) to call cbs.
 - udata is like user_data in paho_mqtt.
 - Do not register same cb twice, no check for duplicated cb.
-- Neither unregistering cbs nor stopping the loops is possible yet.
-  (rarely useful?)
+- Neither unregistering cbs nor stopping the loops is supported.
 
 ## Basic Example
     from mqtt_as import MQTT_base, config
