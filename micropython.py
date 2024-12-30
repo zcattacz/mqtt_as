@@ -8,8 +8,13 @@ def native(fn):
 
 def patch_socket():
     import socket
+    from errno import ECONNRESET
     def write(s, buf):
-        return s.send(buf)
+        try:
+            return s.send(buf)
+        except BrokenPipeError:
+            # catch as linkdown in upy
+            raise OSError(ECONNRESET)
     def read(s, n):
         return s.recv(n)
     def readinto(s, buf, n):
