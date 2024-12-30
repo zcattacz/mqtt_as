@@ -11,10 +11,10 @@ The following public interfaces are the same as original `mqtt_as`,
 everything else is either removed or dimmed as internal:
 
 ## Methods
-`connect(clean:bool)` / `disconnect()` -> awaitable
+`connect(clean:bool=True)` / `disconnect()` -> awaitable
 - `disconnect()` is unnecessary before *re-* connect, socket is closed on `connect`.
 
-`subscribe(topic:str, qos)` / `unsubscribe(topic:str)` -> awaitable
+`subscribe(topic:str, qos=0)` / `unsubscribe(topic:str)` -> awaitable
 
 `publish(topic:str, msg:bytes, retain=False, qos=0, oneshot=False)` -> awaitable
 - msg must be bytes/bytearray, otherwise error on cpython
@@ -55,11 +55,11 @@ everything else is either removed or dimmed as internal:
     async def main():
         client = MQTT_base(config)
         #client.DEBUG = True
-        await client.connect(True)
+        await client.connect()
         await client.up.wait()
         client.up.clear()
         print("mqtt connected")
-        await client.subscribe("new_topic", qos=0)
+        await client.subscribe("new_topic")
         client.set_cb_on_event("msg", cb_on_message)
         await client.publish("new_topic", b"hello world")
         await asyncio.sleep(1)

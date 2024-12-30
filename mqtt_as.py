@@ -392,7 +392,7 @@ class MQTT_base:
 
         # Socket connected
 
-    async def connect(self, clean):
+    async def connect(self, clean=True):
 
         self._in_connect = True
         self._has_connected = False
@@ -644,7 +644,7 @@ class MQTT_base:
             raise
 
     # Can raise OSError if WiFi fails. Subclass traps.
-    async def subscribe(self, topic, qos):
+    async def subscribe(self, topic, qos=0):
         pkt = bytearray(b"\x82\0\0\0")
         pid = next(self.newpid)
         self.rcv_pids.add(pid)
