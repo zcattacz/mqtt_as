@@ -50,6 +50,7 @@ _SOCKET_POLL_DELAY = const(5)  # 100ms added greatly to publish latency
 ESP32 = platform == "esp32"
 RP2 = platform == "rp2"
 LINUX = platform == "linux"
+WIN32 = platform == "win32"
 
 BUSY_ERRORS = [EINPROGRESS, ETIMEDOUT]
 if ESP32:
@@ -373,6 +374,9 @@ class MQTT_base:
                 _addr = self._addr
             self.dprint("mq:sock connecting to: %s", _addr)
         self._sock.setblocking(False)
+        ## for now, necessary on windows
+        if WIN32:
+            self._sock.settimeout(0.2)
         if self._use_poll_fix:
             self._connect_poll_fix()
             gc.collect()
