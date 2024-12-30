@@ -659,6 +659,7 @@ class MQTT_base:
             if ex.args[0] in LINK_DOWN_ERRORS:
                 self._set_discnct("sub")
 
+        self.dprint("mq.sub wait_pid(%d)", pid)
         if not await self._await_pid(pid):
             raise OSError(-1)
 
@@ -724,6 +725,7 @@ class MQTT_base:
                 raise OSError(-1, "Invalid SUBACK packet")
             pid = resp[2] | (resp[1] << 8)
             if pid in self.rcv_pids:
+                self.dprint("mq.rcv:subAck pid(%d)", pid)
                 self.rcv_pids.discard(pid)
             else:
                 raise OSError(-1, "Invalid pid in SUBACK packet")
