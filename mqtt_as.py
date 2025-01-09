@@ -64,6 +64,8 @@ elif LINUX:
     BUSY_ERRORS += [11] # BlockingIOError Resource temporarily unavaliable
 
 LINK_DOWN_ERRORS = [ENOTCONN, ECONNRESET]
+if LINUX:
+    LINK_DOWN_ERRORS += [101] # ENETUNREACH Network unreachable
 
 ESP8266 = platform == "esp8266"
 PYBOARD = platform == "pyboard"
