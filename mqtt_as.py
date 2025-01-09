@@ -6,22 +6,25 @@
 # Various improvements contributed by Kevin Köck.
 
 import gc
-
-from micropython import const
 try:
-    import usocket as socket
-    import uasyncio as asyncio
-    import time
-    from time import ticks_ms, ticks_diff
-    print("running in micropython")
-except:
     import micropython # for @micropython.native stub
+except ImportError:
+    from . import micropython # to work in regular pip package
+
+from sys import platform, implementation
+if implementation.name == "micropython":
+    import socket
+    import asyncio
+    import time
+    print("running in micropython")
+elif implementation.name == "cpython":
     socket = micropython.patch_socket()
     asyncio = micropython.patch_asyncio()
     time = micropython.patch_time()
-    ticks_ms = time.ticks_ms
-    ticks_diff = time.ticks_diff
     print("running in cpython")
+ticks_ms = time.ticks_ms
+ticks_diff = time.ticks_diff
+const = micropython.const
 gc.collect()
 
 import struct
@@ -30,14 +33,13 @@ from errno import EINPROGRESS, ETIMEDOUT
 from errno import ENOTCONN, ECONNRESET
 try:
     from machine import unique_id
-except:
+except ImportError:
     # micropython unix port also lacks unique_id
     print(" - unix port")
     def unique_id():
         import random
         return f'some.uid.{random.choice("abcdefg")}s{random.randint(0,9999)}'.encode("ascii")
 
-from sys import platform, implementation
 gc.collect()
 
 VERSION = (0, 7, 0)
