@@ -48,13 +48,13 @@ def patch_time():
         def __init__(self) -> None:
             import time
             self._time = time
-            self._init_on = time.time()
+            self._init_on = time.monotonic()
         def time(self):
-            return int((self._time.time()-self._init_on))
+            return int((self._time.monotonic()-self._init_on))
         def ticks_ms(self):
-            return int((self._time.time()-self._init_on)*1000)
+            return int((self._time.monotonic()-self._init_on)*1000)
         def ticks_us(self):
-            return int((self._time.time()-self._init_on)*1000*1000)
+            return int((self._time.monotonic()-self._init_on)*1000*1000)
         def ticks_diff(self, a, b):
             return a-b
     return Time()
