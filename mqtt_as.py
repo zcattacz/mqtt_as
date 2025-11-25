@@ -35,8 +35,7 @@ gc.collect()
 
 import struct
 from binascii import hexlify
-from errno import EINPROGRESS, ETIMEDOUT
-from errno import ENOTCONN, ECONNRESET
+from errno import EINPROGRESS, ETIMEDOUT, ENOTCONN, ECONNRESET
 try:
     from machine import unique_id
 except ImportError:
@@ -55,26 +54,27 @@ _DEFAULT_MS = const(20)
 _SOCKET_POLL_DELAY = const(5)  # 100ms added greatly to publish latency
 
 # Legitimate errors while waiting on a socket. See uasyncio __init__.py open_connection().
-ESP32 = platform == "esp32"
-RP2 = platform == "rp2"
-LINUX = platform == "linux"
-WIN32 = platform == "win32"
+def platform_dependent_errors():
 
-BUSY_ERRORS = [EINPROGRESS, ETIMEDOUT]
-if ESP32:
-    # https://forum.micropython.org/viewtopic.php?f=16&t=3608&p=20942#p20942
-    BUSY_ERRORS += [118, 119]  # Add in weird ESP32 errors
-elif RP2:
-    BUSY_ERRORS += [-110]
-elif LINUX:
-    BUSY_ERRORS += [11] # BlockingIOError Resource temporarily unavaliable
+    BUSY_ERRORS = [EINPROGRESS, ETIMEDOUT]
+    if platform == "esp32":
+        # https://forum.micropython.org/viewtopic.php?f=16&t=3608&p=20942#p20942
+        BUSY_ERRORS += [118, 119]  # Add in weird ESP32 errors
+    elif platform == "rp2":
+        BUSY_ERRORS += [-110]
+    elif platform == "linux":
+        BUSY_ERRORS += [11] # BlockingIOError Resource temporarily unavaliable
 
-LINK_DOWN_ERRORS = [ENOTCONN, ECONNRESET]
-if LINUX:
-    LINK_DOWN_ERRORS += [101] # ENETUNREACH Network unreachable
+    LINK_DOWN_ERRORS = [ENOTCONN, ECONNRESET]
+    if platform == "linux":
+        LINK_DOWN_ERRORS += [101] # ENETUNREACH Network unreachable
 
-ESP8266 = platform == "esp8266"
-PYBOARD = platform == "pyboard"
+    #WIN32 = platform == "win32"
+    #ESP8266 = platform == "esp8266"
+    #PYBOARD = platform == "pyboard"
+    return BUSY_ERRORS, LINK_DOWN_ERRORS
+
+BUSY_ERRORS, LINK_DOWN_ERRORS = platform_dependent_errors()
 
 class MsgQueue:
     def __init__(self, size):
@@ -361,7 +361,7 @@ class MQTT_base:
             self.dprint("mq:sock connecting to: %s", _addr)
         self._sock.setblocking(False)
         ## for now, necessary on windows
-        if WIN32:
+        if platform == "win32":
             self._sock.settimeout(0.2)
         try:
             self._sock.connect(self._addr)
