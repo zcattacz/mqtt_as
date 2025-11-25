@@ -39,7 +39,7 @@ VERSION = (0, 7, 0)
 
 # Default short delay for good SynCom throughput (avoid sleep(0) with SynCom).
 _DEFAULT_MS = const(20)
-_SOCKET_POLL_DELAY = const(5)  # 100ms added greatly to publish latency
+#_SOCKET_POLL_DELAY = const(5)  # 100ms added greatly to publish latency
 
 # Legitimate errors while waiting on a socket. See uasyncio __init__.py open_connection().
 ESP32 = platform == "esp32"
@@ -220,7 +220,8 @@ class MQTT_base:
             if not self._has_connected and not self._in_connect:
                 raise OSError(-1, "Not connected on socket read")
             try:
-                data = await sr.read(n)
+                #print("r>")
+                data = await sr.readexactly(n)
                 msg_size = len(data)
                 self.last_rx = ticks_ms()
             except OSError as e:  # ESP32 issues weird 119 errors here
@@ -230,9 +231,10 @@ class MQTT_base:
                     self._set_discnct("aread")
                     raise OSError(-1, "Socket stream read failed")
                 raise
-            if msg_size == 0:  # Connection closed by host
-                self._set_discnct("rhclose")
-                raise OSError(-1, "Connection closed by host")
+            #print("r<")
+            #if msg_size == 0:  # Connection closed by host
+            #    self._set_discnct("rhclose")
+            #    raise OSError(-1, "Connection closed by host")
         return data
 
     async def _as_write(self, bytes_wr:bytes, length=0, sw=None):
@@ -300,6 +302,7 @@ class MQTT_base:
             #try:
             #    sock = self._sw.s
             #except:
+            #    # cpython fix
             #    sock = self._sw._transport._sock
             #sock.setblocking(False)
             #sock.settimeout(0)
