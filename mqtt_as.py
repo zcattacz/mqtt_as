@@ -6,25 +6,31 @@
 # Various improvements contributed by Kevin Köck.
 
 import gc
-try:
-    import micropython # for @micropython.native stub
-except ImportError:
-    from . import micropython # to work in regular pip package
 
 from sys import platform, implementation
 if implementation.name == "micropython":
-    import socket
-    import asyncio
+    from micropython import const
+    import uasyncio as asyncio
     import time
+    if getattr(implementation, "_mpy",2300) <= 2310:
+        import patch_upy2310_socket as socket
+    else:
+        import socket
     print("running in micropython")
 elif implementation.name == "cpython":
-    socket = micropython.patch_socket()
-    asyncio = micropython.patch_asyncio()
-    time = micropython.patch_time()
+    # shims to work in regular pip package
+    from micropython import const, asyncio, time, socket
     print("running in cpython")
+
+if platform in ["linux", "win32"]:
+    # both unix port and cpython lacks native
+    def native(fn):
+        return fn
+else:
+    from micropython import native
+
 ticks_ms = time.ticks_ms
 ticks_diff = time.ticks_diff
-const = micropython.const
 gc.collect()
 
 import struct
@@ -141,7 +147,6 @@ class MQTT_base:
 
     def __init__(self, config):
         self.DEBUG = False
-        self._use_poll_fix = getattr(implementation, "_mpy",2400) <= 2310
         # MQTT config
         self._client_id = config["client_id"]
         self._user = config["user"]
@@ -177,7 +182,6 @@ class MQTT_base:
             raise ValueError("no server specified.")
         self._addr = None #cache the resolved DNS target
         self._sock:socket.socket = None #type:ignore
-        self._sock_connect_timeout:int = 5*1000 #ms
 
         self.newpid = pid_gen()
         self.rcv_pids = set()  # PUBACK and SUBACK pids awaiting ACK response
@@ -330,29 +334,7 @@ class MQTT_base:
                 else:
                     print("DNS unknown err:", ex.args)
         raise OSError(-1, "DNS failed")
-    
-    def _connect_poll_fix(self):
-        import select
-        poller = select.poll()
-        poller.register(self._sock, select.POLLIN | select.POLLOUT)
-
-        try:
-            self._sock.connect(self._addr)
-        except OSError as e:
-            if e.errno != EINPROGRESS:
-                raise e
-
-        self.dprint("- poll_fix: polling sock for connect open")
-        res = poller.poll(self._sock_connect_timeout)
-        #print("c2u", res)
-        poller.unregister(self._sock)
-        #print("c2ud", res)
-        if not res:
-            #print("c2e", res)
-            self._sock.close()
-            raise OSError('Socket Connect Timeout')
-    
-    
+        
     def _connect(self):
         if self._sock and self._sock.fileno() > 0:
             self.dprint("found socket %s left open before connect, closing", self._sock)
@@ -381,14 +363,10 @@ class MQTT_base:
         ## for now, necessary on windows
         if WIN32:
             self._sock.settimeout(0.2)
-        if self._use_poll_fix:
-            self._connect_poll_fix()
-            gc.collect()
-        else:
-            try:
-                self._sock.connect(self._addr)
-            except Exception as ex:
-                    raise ex
+        try:
+            self._sock.connect(self._addr)
+        except Exception as ex:
+                raise ex
         if self._sock.fileno() < 0:
             raise OSError('Socket Connect Failed, RST?')
         if self.DEBUG:
@@ -576,7 +554,7 @@ class MQTT_base:
             count += 1
             self.REPUB_COUNT += 1
 
-    @micropython.native
+    @native
     def _mk_pub_header(self, pkt, sz2, retain, qos, dup):
         pkt[0] |= qos << 1 | retain | dup << 3
         sz = 2 + sz2

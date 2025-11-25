@@ -80,3 +80,7 @@ def patch_gc():
     gc.mem_free = mem_free
     gc.mem_alloc = mem_alloc
     return gc
+
+socket = patch_socket()
+asyncio = patch_asyncio()
+time = patch_time()
