@@ -13,7 +13,7 @@ if implementation.name == "micropython":
     import uasyncio as asyncio
     import time
     if getattr(implementation, "_mpy",2300) <= 2310:
-        import patch_upy2310_socket as socket
+        import patch_poll_socket as socket
     else:
         import socket
     print("running in micropython")

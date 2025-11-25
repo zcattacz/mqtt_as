@@ -88,12 +88,17 @@ everything else is either removed or dimmed as internal:
     finally:
         asyncio.new_event_loop()
 
-## Notes on CPython
+## Notes
 
+### cpython
 - `micropython.py` is the shim required to work in CPython.
 - `MQTT_base` initializes async lock/queue/event on instance creation. 
 It must be created from the same loop that awaits other `mqtt_as` coros (connect/sub/unsub etc).
 This might lead to frustration if unnoticed.
+
+### Older micropython
+- socket.connect() as a synchronous call, in some older version upy, sometimes locks up for minutes. This lead to issues in my application.
+- `patch_poll_socket` is the work around with select.poll() to avoid that on 1.20 or sth.
 
 ## Credit
 
