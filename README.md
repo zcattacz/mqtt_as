@@ -102,6 +102,9 @@ This might lead to frustration if unnoticed.
 - socket.connect() as a synchronous call, in some older version upy, sometimes locks up for minutes. This lead to issues in my application.
 - `patch_poll_socket` is the work around with select.poll() to avoid that on 1.20 or sth.
 
+### Performance
+- In case of bulk data transfer, `_SOCKET_POLL_DELAY` adds significant delay, adjust it if necessary.
+
 ## Credit
 
 All credit goes to the original author @peterhinch. Thanks for always answering my questions.
