@@ -55,6 +55,8 @@ everything else is either removed or dimmed as internal:
 ## Basic Example
 
     from mqtt_as import MQTT_base, config
+    # Use callbacks,
+    # from mqtt_as_cb import MQTT_base, config
 
     # override defaults
     config['server'] = 'test.mosquitto.org'  # Change to suit
@@ -74,11 +76,11 @@ everything else is either removed or dimmed as internal:
             print(tpc, msg, retained)
         await client.publish("new_topic", b"hello world to event")
 
-        # or callback style
-        async def cb_on_message(tpc, msg, retained):
-            print(tpc, msg, retained)
-        client.set_cb_on_event("msg", cb_on_message)
-        await client.publish("new_topic", b"hello world to callback")
+        # Use callbacks,
+        # async def cb_on_message(tpc, msg, retained):
+        #    print(tpc, msg, retained)
+        # client.set_cb_on_event("msg", cb_on_message)
+        # await client.publish("new_topic", b"hello world to callback")
 
         await asyncio.sleep(1)
         await client.disconnect()
